@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import Filter from "./components/Filter";
 import PersonForm from "./components/PersonForm";
 import Persons from "./components/Persons";
-import axios from "axios";
 import personsService from "./services/persons";
+import Notification from "./components/Notification";
 
 const App = () => {
   const [persons, setPersons] = useState([]);
   const [filter, setFilter] = useState("");
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     personsService
@@ -48,8 +49,22 @@ const App = () => {
             );
             setNewName("");
             setNewNumber("");
+            showNotification(
+              `${returnedPerson.name}'s number has been modified`,
+              "success",
+            );
           })
-          .catch((error) => console.log("error updating"));
+          .catch(() => {
+            setNewName("");
+            setNewNumber("");
+            showNotification(
+              `Information of ${personExists.name} has already been removed from the server`,
+              "error",
+              setPersons(
+                persons.filter((person) => person.id !== personExists.id),
+              ),
+            );
+          });
       }
     } else {
       personsService
@@ -58,18 +73,33 @@ const App = () => {
           setPersons(persons.concat(returnedPerson));
           setNewName("");
           setNewNumber("");
+          showNotification(`${returnedPerson.name} was added`, "success");
         })
-        .catch((error) => console.log("error adding person"));
+        .catch(() => showNotification(`Failed to add person`, "error"));
     }
   };
 
   const removePerson = (id, name) => {
-    if (confirm(`Delete ${name}?`)) {
+    if (confirm(`Remove ${name}?`)) {
       personsService
         .remove(id)
-        .then(() => setPersons(persons.filter((person) => person.id !== id)))
-        .catch((error) => console.log("failed to delete person"));
+        .then(() => {
+          showNotification(`${name} has been removed`, "success");
+          setPersons(persons.filter((person) => person.id !== id));
+        })
+        .catch(() => {
+          showNotification(
+            `${name} has already been removed from the server`,
+            "error",
+            setPersons(persons.filter((person) => person.id !== id)),
+          );
+        });
     }
+  };
+
+  const showNotification = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 5000);
   };
 
   const personsToShow =
@@ -92,6 +122,7 @@ const App = () => {
         newNumber={newNumber}
         handleNumberChange={handleNumberChange}
       />
+      <Notification message={message} />
 
       <h2>Numbers</h2>
       <Persons
